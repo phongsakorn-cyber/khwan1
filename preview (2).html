@@ -1,0 +1,527 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ง้อแฟน 💜</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap');
+
+*{box-sizing:border-box}
+
+body{
+ margin:0;min-height:100vh;padding:15px;
+ display:flex;justify-content:center;align-items:center;
+ font-family:'Mitr',sans-serif;color:#48236c;
+ background:linear-gradient(135deg,#b98cf2,#e5c8ff,#c7a3f5);
+}
+
+.container{width:100%;max-width:650px;text-align:center}
+
+.hero{
+ height:220px;overflow:hidden;border-radius:25px;
+ border:3px solid white;margin-bottom:12px;
+ box-shadow:0 8px 25px #63339b35;
+}
+.hero img{width:100%;height:100%;object-fit:cover}
+
+.title{
+ font-size:48px;color:white;
+ text-shadow:3px 4px #7032a5;margin:5px
+}
+.subtitle{color:white;font-size:18px}
+
+.progress{
+ width:80%;height:8px;margin:15px auto;
+ background:#ffffff80;border-radius:20px;overflow:hidden
+}
+.progress-fill{
+ height:100%;width:16.66%;
+ background:linear-gradient(90deg,#b36ce9,#7130ae);
+ transition:.4s
+}
+
+.card{
+ background:#ffffffdf;border:3px solid white;
+ border-radius:30px;padding:28px 18px;
+ margin:20px 0;box-shadow:0 8px 20px #673b9133;
+ animation:appear .4s ease
+}
+@keyframes appear{
+ from{opacity:0;transform:translateY(15px)}
+ to{opacity:1;transform:translateY(0)}
+}
+
+.number{
+ display:inline-block;background:#843dbd;color:white;
+ border:3px solid white;border-radius:30px;
+ padding:6px 25px;font-size:16px
+}
+.question{font-size:26px;margin:20px 0;line-height:1.6}
+
+.buttons{
+ display:flex;justify-content:center;
+ align-items:center;gap:15px;flex-wrap:wrap;
+ min-height:60px
+}
+button{
+ font-family:inherit;font-size:19px;
+ border-radius:50px;min-width:125px;
+ padding:11px 25px;cursor:pointer;
+ transition:.2s
+}
+.yes{
+ background:linear-gradient(135deg,#a451df,#7130ae);
+ color:white;border:3px solid white;
+ box-shadow:0 4px 12px #7839aa55
+}
+.no{
+ background:linear-gradient(135deg,#e2c6ff,#c393f1);
+ color:white;border:3px solid white;
+ box-shadow:0 4px 12px #7839aa35
+}
+button:active{transform:scale(.94)}
+
+.message{
+ font-size:16px;line-height:2;
+ color:#67427f;text-align:left;padding:10px
+}
+.message strong{color:#9b4bc5}
+.hidden{display:none!important}
+
+.footer{
+ background:#ffffffc9;border:2px solid white;
+ border-radius:40px;padding:13px;
+ color:#7039a2;font-size:14px
+}
+.heart{
+ position:fixed;pointer-events:none;
+ animation:float 4s linear forwards
+}
+@keyframes float{
+ to{transform:translateY(-100vh) rotate(360deg);opacity:0}
+}
+
+@media(max-width:500px){
+ .hero{height:180px}
+ .title{font-size:38px}
+ .question{font-size:22px}
+ button{min-width:110px;font-size:17px}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+ <div class="hero">
+  <img src="bear-ui.png" alt="หมีน้อยกำลังง้อผีเสื้อ">
+ </div>
+
+ <h1 class="title">ง้อแฟน 💗</h1>
+ <div class="subtitle">ขออีกสักครั้งได้ไหมนะ...</div>
+
+ <div class="progress">
+  <div class="progress-fill" id="progress"></div>
+ </div>
+
+ <div class="card" id="card">
+  <div class="number" id="number">♥ คำถามที่ 1</div>
+  <div class="question" id="question"></div>
+
+  <div class="buttons" id="buttons">
+   <button class="yes" id="yes">✓ ใช่ 💗</button>
+   <button class="no" id="no">✕ ไม่</button>
+  </div>
+
+  <div class="message hidden" id="message"></div>
+ </div>
+
+ <div class="footer">
+  ♥ เรารักเธอนะครับ ขอแค่มีเธออยู่ข้าง ๆ ก็พอแล้ว ♥
+ </div>
+</div>
+
+<script>
+
+// =======================================
+// 1. ตั้งค่าการเชื่อมต่อ GOOGLE SHEETS
+// =======================================
+
+const GOOGLE_SCRIPT_URL = "ใส่_URL_WEB_APP_ตรงนี้";
+
+// =======================================
+// 2. SESSION และระบบเก็บข้อมูล
+// =======================================
+
+let sessionId = sessionStorage.getItem("love_session");
+
+if(!sessionId){
+ sessionId = "LOVE-" + Date.now() + "-" +
+ Math.random().toString(36).slice(2,9);
+ sessionStorage.setItem("love_session",sessionId);
+}
+
+let sequence = 0;
+let clickCounts = {};
+let current = 1;
+let attempts = 0;
+let questionStartedAt = Date.now();
+let startedAt = Date.now();
+let lastQuestionLogged = 0;
+let pageClosed = false;
+
+const questions = [
+ "คุณเชื่อน้องขวัญคนสวยหรือไม่?",
+ "น้องขวัญยังโกรธอยู่ใช่หรือไม่?",
+ "ยังรักน้องกรอยู่ไหม?",
+ "ยกโทษให้กรได้ไหม?",
+ "กลับมาอยู่ด้วยกันได้ไหม?",
+ "ไปเที่ยวด้วยกันไหม?"
+];
+
+const question = document.getElementById("question");
+const number = document.getElementById("number");
+const yes = document.getElementById("yes");
+const no = document.getElementById("no");
+const buttons = document.getElementById("buttons");
+const message = document.getElementById("message");
+const progress = document.getElementById("progress");
+const card = document.getElementById("card");
+
+// =======================================
+// 3. ฟังก์ชันบันทึกลง GOOGLE SHEETS
+// =======================================
+
+function logEvent(eventType,buttonName=""){
+
+ sequence++;
+
+ const key = current + "_" + eventType + "_" + buttonName;
+
+ clickCounts[key] = (clickCounts[key] || 0) + 1;
+
+ const questionText =
+ typeof current === "number"
+ ? questions[current-1] || ""
+ : question.textContent;
+
+ const data = {
+  sessionId:sessionId,
+  sequence:sequence,
+  questionNo:current,
+  questionText:questionText,
+  eventType:eventType,
+  button:buttonName,
+  clickCount:clickCounts[key],
+  pageState:String(current),
+  duration:Math.round((Date.now()-questionStartedAt)/1000),
+  userAgent:navigator.userAgent
+ };
+
+ if(!GOOGLE_SCRIPT_URL ||
+ GOOGLE_SCRIPT_URL.includes("ใส่_URL")){
+  console.log("ยังไม่ได้ตั้งค่า Google Sheets:",data);
+  return;
+ }
+
+ fetch(GOOGLE_SCRIPT_URL,{
+  method:"POST",
+  mode:"no-cors",
+  headers:{
+   "Content-Type":"text/plain;charset=utf-8"
+  },
+  body:JSON.stringify(data)
+ }).catch(err=>{
+  console.error("ส่งข้อมูลไม่สำเร็จ",err);
+ });
+
+}
+
+// =======================================
+// 4. แสดงคำถาม
+// =======================================
+
+function showQuestion(n){
+
+ current=n;
+ attempts=0;
+
+ card.style.animation="none";
+ void card.offsetWidth;
+ card.style.animation="appear .4s ease";
+
+ question.textContent=questions[n-1];
+ number.textContent="♥ คำถามที่ "+n;
+ progress.style.width=(n/6*100)+"%";
+
+ buttons.classList.remove("hidden");
+ message.classList.add("hidden");
+
+ yes.style.display="inline-block";
+ no.style.display="inline-block";
+
+ no.style.position="relative";
+ no.style.left="auto";
+ no.style.top="auto";
+ no.style.transform="none";
+ no.style.fontSize="";
+ no.style.padding="";
+ no.textContent="✕ ไม่";
+
+ yes.textContent="✓ ใช่ 💗";
+
+ yes.onclick=answerYes;
+ no.onclick=answerNo;
+
+ questionStartedAt=Date.now();
+
+ // บันทึกเฉพาะครั้งแรกที่เปิดคำถาม
+ if(lastQuestionLogged!==n){
+  lastQuestionLogged=n;
+  logEvent("QUESTION_VIEW","เปิดคำถาม");
+ }
+}
+
+// =======================================
+// 5. เมื่อกดใช่
+// =======================================
+
+function answerYes(){
+
+ logEvent("BUTTON_CLICK","ใช่");
+
+ if(current===1) showQuestion(2);
+ else if(current===2) showQuestion(3);
+ else if(current===3) showQuestion(4);
+ else if(current===4) showQuestion(5);
+ else if(current===5) askPickup();
+ else if(current===6) success();
+}
+
+// =======================================
+// 6. เมื่อกดไม่
+// =======================================
+
+function answerNo(){
+
+ logEvent("BUTTON_CLICK","ไม่");
+
+ if(current===1){
+
+  attempts++;
+
+  let scale=Math.max(.05,1-attempts/8);
+
+  no.style.transform=`scale(${scale})`;
+
+  if(attempts>=8){
+   no.style.display="none";
+   logEvent("NO_BUTTON_DISAPPEAR","ปุ่มไม่หายไป");
+  }
+ }
+
+ else if(current===2){
+  apology();
+ }
+
+ else if(current===3 || current===4){
+
+  attempts++;
+
+  if(attempts>=8){
+   logEvent("NO_DODGE_COMPLETE","วิ่งหนีครบ 8 ครั้ง");
+   apology();
+   return;
+  }
+
+  moveButton();
+ }
+
+ else if(current===5){
+  showQuestion(6);
+ }
+
+ else if(current===6){
+  apology();
+ }
+}
+
+// =======================================
+// 7. ปุ่มวิ่งหนี
+// =======================================
+
+function moveButton(){
+
+ logEvent("NO_DODGE","ปุ่มไม่วิ่งหนี");
+
+ no.style.position="fixed";
+ no.style.left=(5+Math.random()*75)+"vw";
+ no.style.top=(10+Math.random()*75)+"vh";
+ no.style.zIndex="100";
+}
+
+// =======================================
+// 8. ให้กรไปรับไหม
+// =======================================
+
+function askPickup(){
+
+ current=7;
+ attempts=0;
+
+ logEvent("PICKUP_VIEW","เปิดหน้าถามไปรับ");
+
+ number.textContent="♥ คำถามพิเศษ";
+ question.textContent="ให้กรไปรับเลยไหม? 💗";
+ progress.style.width="100%";
+
+ yes.textContent="ไปรับเลย 💗";
+ no.textContent="ยังไม่";
+
+ yes.onclick=()=>{
+  logEvent("PICKUP_ANSWER","ไปรับเลย");
+  success();
+ };
+
+ no.onclick=()=>{
+  logEvent("PICKUP_ANSWER","ยังไม่");
+  showQuestion(6);
+ };
+}
+
+// =======================================
+// 9. หน้าขอโทษ
+// =======================================
+
+function apology(){
+
+ current="apology";
+
+ logEvent("APOLOGY","เข้าสู่หน้าขอโทษ");
+
+ number.textContent="♥ จากใจของกร";
+ question.textContent="เราขอโทษนะ 🥺";
+
+ buttons.classList.remove("hidden");
+ message.classList.remove("hidden");
+
+ message.innerHTML=`
+ เราขอโทษนะที่เราทำไม่ดี<br>
+ เราแค่อยากขอโอกาสอีกสักครั้ง<br>
+ ให้เรากลับมาอยู่เหมือนเดิม<br><br>
+
+ ชีวิตคือความสุขมากเลย ตอนนี้เหงามาก<br>
+ อยากไปเที่ยวด้วยกัน อยากไปกินของอร่อย ๆ ด้วยกัน<br>
+ อยากมองเธอยิ้ม มองเธอมีความสุขมากเลย<br><br>
+
+ อยากกอด อยากหอม อยากจูบ<br>
+ เหมือนทุกวันที่เคยเป็น<br><br>
+
+ <strong>เรารักเธอมากนะขวัญ 💜</strong><br><br>
+
+ เราแค่อยากขอโอกาสอีกสักครั้ง
+ ให้เรากลับมาอยู่ด้วยกันเหมือนเดิมนะ
+ `;
+
+ yes.textContent="ให้โอกาสกรนะ 💗";
+ no.textContent="ยังไม่";
+
+ yes.onclick=()=>{
+  logEvent("APOLOGY_ANSWER","ให้โอกาส");
+  showQuestion(4);
+ };
+
+ no.onclick=()=>{
+  logEvent("APOLOGY_ANSWER","ยังไม่ให้โอกาส");
+  apology();
+ };
+}
+
+// =======================================
+// 10. หน้าจบ
+// =======================================
+
+function success(){
+
+ current="success";
+
+ logEvent("SUCCESS","สำเร็จ");
+
+ buttons.classList.add("hidden");
+ message.classList.remove("hidden");
+
+ number.textContent="♥ HAPPY ENDING ♥";
+ question.textContent="เย้! ขอบคุณนะ 💜";
+ progress.style.width="100%";
+
+ message.innerHTML=`
+ <div style="text-align:center">
+ <div style="font-size:55px">🐻‍❄️ 🦋 💗</div>
+ <h2 style="color:#8b45c6">กรรักขวัญนะ</h2>
+ ขอบคุณที่ให้โอกาสกรอีกครั้ง<br>
+ เราจะดูแลความรักของเราให้ดีที่สุด<br>
+ <strong>ไปเที่ยวด้วยกันนะคนสวย 💜</strong>
+ </div>
+ `;
+
+ hearts();
+}
+
+// =======================================
+// 11. หัวใจลอย
+// =======================================
+
+function hearts(){
+
+ for(let i=0;i<35;i++){
+
+  let h=document.createElement("div");
+  h.className="heart";
+
+  h.textContent=["💜","💗","💕","🦋","✨"]
+  [Math.floor(Math.random()*5)];
+
+  h.style.left=Math.random()*100+"vw";
+  h.style.bottom="-30px";
+  h.style.fontSize=(18+Math.random()*20)+"px";
+
+  document.body.appendChild(h);
+
+  setTimeout(()=>h.remove(),4000);
+ }
+}
+
+// =======================================
+// 12. บันทึกการออกจากเว็บไซต์
+// =======================================
+
+function logExit(){
+
+ if(pageClosed)return;
+ pageClosed=true;
+
+ logEvent("PAGE_EXIT","ออกจากเว็บไซต์");
+}
+
+// บันทึกเมื่อเปลี่ยนแท็บหรือปิดหน้าเว็บ
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="hidden"){
+  logExit();
+ }
+});
+
+window.addEventListener("pagehide",logExit);
+
+// =======================================
+// 13. เริ่มต้นเว็บไซต์
+// =======================================
+
+logEvent("SESSION_START","เริ่มเข้าชมเว็บไซต์");
+showQuestion(1);
+
+</script>
+</body>
+</html>
